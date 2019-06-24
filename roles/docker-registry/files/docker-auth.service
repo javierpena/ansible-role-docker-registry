@@ -1,0 +1,12 @@
+[Unit]
+Description=Registry Auth
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+ExecStart=/usr/bin/docker start -a registry_auth
+ExecStop=/usr/bin/docker stop -t 2 registry_auth
+
+[Install]
+WantedBy=default.target

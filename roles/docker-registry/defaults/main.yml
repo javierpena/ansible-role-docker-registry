@@ -1,0 +1,18 @@
+---
+registry_users:
+  admin:
+    name: "admin"
+    password: 'htpasswd-encoded password'
+    actions: '["*"]'
+    comment: "Admin has full access to everything."
+  user:
+    name: "user"
+    password: 'htpasswd-encoded password'
+    actions: '["pull"]'
+    comment: "User can pull stuff"
+  someuser:
+    name: "someuser"
+    password: '$2y$05$xGjLA8tE6S93E5ctHv8ZUOxN16/1cfGyQTribX1z8RJwOhrWwMh4S'
+    actions: '["*"]'
+    rule_name: '"someuser/*"'
+    comment: "Someuser has full access to its own namespace."

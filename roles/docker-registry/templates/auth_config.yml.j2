@@ -1,0 +1,25 @@
+server:
+  addr: ":5001"
+  certificate: "/config/docker_auth.crt"
+  key: "/config/docker_auth.key"
+
+token:
+  issuer: "Registry server"  # Must match issuer in the Registry config.
+  expiration: 900
+
+users:
+  # Password is specified as a BCrypt hash. Use `htpasswd -nB USERNAME` to generate.
+  {% for key, value in registry_users.items() %}
+  "{{ key }}":
+        password: "{{ value.password }}"
+  {% endfor %}
+
+acl:
+  {% for key, value in registry_users.items() %}
+  - match:
+        account: "{{ key }}"
+        {% if value.rule_name is defined %}name: {{ value.rule_name }}{% else %}# no name{% endif %}
+
+      actions: {{ value.actions }}
+      comment: "{{ value.comment }}"
+  {% endfor %}

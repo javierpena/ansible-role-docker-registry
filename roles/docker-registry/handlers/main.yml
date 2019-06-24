@@ -1,0 +1,10 @@
+---
+- name: Restart docker_auth
+  service:
+    name: "docker-auth"
+    state: "restarted"
+
+- name: Restart docker_registry
+  service:
+    name: "docker-registry"
+    state: "restarted"

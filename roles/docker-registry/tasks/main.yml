@@ -1,0 +1,149 @@
+---
+- name: Install required packages
+  package:
+    name:
+      - docker
+      - httpd-tools
+      - python-docker-py
+    state: present
+  become: yes
+
+- name: Start the docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Pull the registry image
+  docker_image:
+    name: docker.io/registry:2
+
+- name: Pull the docker_auth image
+  docker_image:
+    name: cesanta/docker_auth:1.3.1
+
+- name: Create required directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+  with_items:
+    - /etc/dockercerts
+    - /etc/docker_auth
+    - /etc/docker_registry
+    - /var/docker_registry
+
+- name: Create dummy certificate for registry
+  shell: |
+      openssl req -newkey rsa:2048 -nodes -keyout registry_auth.key -x509 -days 365 -out registry_auth.crt << EOF
+
+
+
+
+
+
+
+
+      EOF
+  args:
+    chdir: /etc/dockercerts
+    creates: /etc/dockercerts/registry_auth.crt
+
+- name: Create dummy certificate for docker_auth
+  shell: |
+      openssl req -newkey rsa:2048 -nodes -keyout docker_auth.key -x509 -days 365 -out docker_auth.crt<< EOF
+
+
+
+
+
+
+
+
+      EOF
+  args:
+    chdir: /etc/docker_auth
+    creates: /etc/docker_auth/docker_auth.crt
+
+- name: Copy docker_auth cert to registry config directory
+  copy:
+    src: /etc/docker_auth/docker_auth.crt
+    dest: /etc/dockercerts/docker_auth.crt
+    remote_src: yes
+
+- name: Deploy auth template
+  template:
+    src: auth_config.yml.j2
+    dest: /etc/docker_auth/config.yml
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - Restart docker_auth
+
+- name: Deploy registry config
+  copy:
+    src: registry_config.yml
+    dest: /etc/docker_registry/config.yml
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - Restart docker_registry
+
+- name: Detect if docker-auth exists
+  shell: |
+    docker logs registry_auth
+  register: auth_logs
+  changed_when: false
+
+- name: Initial docker-auth start
+  shell: |
+    docker run -d --restart=always --name registry_auth -v /etc/docker_auth:/config:ro  -v /var/log/docker_auth:/logs -p 5001:5001 cesanta/docker_auth:1.3.1 /config/config.yml
+    sleep 5
+    docker stop registry_auth
+  when: auth_logs.rc != 0
+
+- name: Detect if registry exists
+  shell: |
+    docker logs registry
+  ignore_errors: yes
+  register: registry_logs
+  changed_when: false
+
+- name: Initial registry start
+  shell: |
+    docker run -d --restart=always --name registry -v /etc/dockercerts:/certs -v /etc/docker_registry/config.yml:/etc/docker/registry/config.yml -v /var/docker_registry:/var/lib/registry:Z -p 443:443 registry:2
+    sleep 5
+    docker stop registry
+  when: registry_logs.rc != 0
+
+- name: Deploy docker-registry service
+  copy:
+    src: docker-registry.service
+    dest: /etc/systemd/system/docker-registry.service
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Deploy docker-auth service
+  copy:
+    src: docker-auth.service
+    dest: /etc/systemd/system/docker-auth.service
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Enable and start docker-registry
+  service:
+    name: docker-registry
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Enable and start docker-auth
+  service:
+    name: docker-auth
+    state: started
+    enabled: yes
+    daemon_reload: yes

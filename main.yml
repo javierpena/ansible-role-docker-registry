@@ -1,0 +1,5 @@
+---
+- name: Configure the RDO registry server
+  hosts: registry.example.com
+  roles:
+    - docker-registry

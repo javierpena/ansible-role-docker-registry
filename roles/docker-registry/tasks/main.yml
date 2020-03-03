@@ -96,6 +96,7 @@
     docker logs registry_auth
   register: auth_logs
   changed_when: false
+  ignore_errors: true
 
 - name: Initial docker-auth start
   shell: |
